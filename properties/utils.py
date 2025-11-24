@@ -43,17 +43,17 @@ def get_redis_cache_metrics():
         hits = info.get('stats', {}).get('keyspace_hits', 0)
         misses = info.get('stats', {}).get('keyspace_misses', 0)
         
-        # Calculate hit ratio (avoid division by zero)
-        total_commands = hits + misses
-        hit_ratio = hits / total_commands if total_commands > 0 else 0
+        # Calculate hit ratio using the exact required syntax
+        total_requests = hits + misses
+        hit_ratio = hits / total_requests if total_requests > 0 else 0
         
         # Create metrics dictionary
         metrics = {
             'hits': hits,
             'misses': misses,
-            'total_commands': total_commands,
-            'hit_ratio': round(hit_ratio, 4),  # Round to 4 decimal places
-            'hit_ratio_percentage': round(hit_ratio * 100, 2)  # As percentage
+            'total_requests': total_requests,
+            'hit_ratio': hit_ratio,
+            'hit_ratio_percentage': round(hit_ratio * 100, 2)
         }
         
         # Log the metrics
@@ -71,7 +71,7 @@ def get_redis_cache_metrics():
         return {
             'hits': 0,
             'misses': 0,
-            'total_commands': 0,
+            'total_requests': 0,
             'hit_ratio': 0,
             'hit_ratio_percentage': 0,
             'error': str(e)
