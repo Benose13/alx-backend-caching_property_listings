@@ -1,5 +1,9 @@
 from django.core.cache import cache
+from django_redis import get_redis_connection
+import logging
 from .models import Property
+
+logger = logging.getLogger(__name__)
 
 def get_all_properties():
     """
@@ -15,8 +19,60 @@ def get_all_properties():
         
         # Store in cache for 1 hour (3600 seconds)
         cache.set('all_properties', properties, 3600)
-        print("Properties fetched from database and cached")
+        logger.info("Properties fetched from database and cached")
     else:
-        print("Properties fetched from cache")
+        logger.info("Properties fetched from cache")
     
     return properties
+
+def get_redis_cache_metrics():
+    """
+    Retrieve and analyze Redis cache hit/miss metrics
+    
+    Returns:
+        dict: Dictionary containing cache hits, misses, and hit ratio
+    """
+    try:
+        # Connect to Redis via django_redis
+        redis_conn = get_redis_connection("default")
+        
+        # Get Redis INFO command output
+        info = redis_conn.info()
+        
+        # Extract keyspace hits and misses from stats section
+        hits = info.get('stats', {}).get('keyspace_hits', 0)
+        misses = info.get('stats', {}).get('keyspace_misses', 0)
+        
+        # Calculate hit ratio (avoid division by zero)
+        total_commands = hits + misses
+        hit_ratio = hits / total_commands if total_commands > 0 else 0
+        
+        # Create metrics dictionary
+        metrics = {
+            'hits': hits,
+            'misses': misses,
+            'total_commands': total_commands,
+            'hit_ratio': round(hit_ratio, 4),  # Round to 4 decimal places
+            'hit_ratio_percentage': round(hit_ratio * 100, 2)  # As percentage
+        }
+        
+        # Log the metrics
+        logger.info(
+            f"Redis Cache Metrics - "
+            f"Hits: {hits}, Misses: {misses}, "
+            f"Hit Ratio: {metrics['hit_ratio_percentage']}%"
+        )
+        
+        return metrics
+        
+    except Exception as e:
+        logger.error(f"Error retrieving Redis cache metrics: {str(e)}")
+        # Return default metrics in case of error
+        return {
+            'hits': 0,
+            'misses': 0,
+            'total_commands': 0,
+            'hit_ratio': 0,
+            'hit_ratio_percentage': 0,
+            'error': str(e)
+        }
